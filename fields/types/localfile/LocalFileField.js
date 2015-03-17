@@ -54,7 +54,8 @@ module.exports = Field.create({
 	removeFile: function (e) {
 		var state = {
 			localSource: null,
-			origin: false
+			origin: false,
+			clientPreviewSrc: false
 		};
 
 		if (this.hasLocal()) {
@@ -100,12 +101,26 @@ module.exports = Field.create({
 		}
 	},
 
+	getClientImagePreview: function () {
+		var files = this.fileFieldNode().files;
+		if (!files.length || files[0].type.indexOf('image') == -1) return;
+
+		var fr = new FileReader();
+		fr.readAsDataURL(files[0]);
+		fr.onload = function(e) {
+			var oldstate = this.state;
+			oldstate.clientPreviewSrc = e.target.result;
+			this.setState(oldstate);
+		}.bind(this);
+	},
+
 	renderFileDetails: function (add) {
 		var values = null;
 
 		if (this.hasFile() && !this.state.removeExisting) {
 			values = <div className='file-values'>
 				<div className='field-value'>{this.getFilename()}</div>
+				<div className='image-preview'>{this.renderImagePreview()}</div>
 			</div>;
 		}
 
@@ -115,6 +130,14 @@ module.exports = Field.create({
 		</div>;
 	},
 
+	renderImagePreview: function () {
+		if (this.hasExisting() && !this.hasLocal() && this.props.value.filetype.indexOf('image') > -1) {
+			return <img src={this.props.value.path + this.props.value.filename} />;
+		}
+		else if (this.hasLocal() && this.state.clientPreviewSrc) {
+			return <img src={this.state.clientPreviewSrc} />;
+		}
+	},
 	renderAlert: function() {
 		if (this.hasLocal()) {
 			return <div className='upload-queued pull-left'>
@@ -168,6 +191,10 @@ module.exports = Field.create({
 				{this.hasFile() && this.renderClearButton()}
 			</div>
 		</div>;
+	},
+
+	componentWillUpdate: function() {
+	   this.getClientImagePreview();
 	},
 
 	renderUI: function() {
